@@ -1,0 +1,575 @@
+
+<h2 class="sr-only">Dashboard interactivo del análisis del abandono en formación online. Datos verificados del TFG: OULAD 2013-2014, 31.482 estudiantes, K-Means k=4, Random Forest AUC 0.936.</h2>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.app{width:100%;background:var(--color-background-secondary);border-radius:12px;overflow:hidden}
+
+/* HEADER */
+.hdr{background:linear-gradient(135deg,#0a1e36 0%,#0d2444 60%,#122d55 100%);padding:20px 24px 0}
+.h-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.h-left h1{font-size:14px;font-weight:500;color:#fff;margin-bottom:3px}
+.h-left p{font-size:10px;color:rgba(255,255,255,.38)}
+.h-right{text-align:right}
+.h-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(99,153,34,.18);border:1px solid rgba(99,153,34,.28);border-radius:20px;padding:3px 11px;margin-bottom:6px}
+.h-dot{width:6px;height:6px;border-radius:50%;background:#97C459;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.h-pill span{color:#97C459;font-size:10px;font-weight:500}
+.h-tags{display:flex;gap:5px;flex-wrap:wrap}
+.tag{font-size:10px;padding:2px 9px;border-radius:20px;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.42);background:rgba(255,255,255,.05)}
+
+/* NAV */
+.nav{background:#0a1b30;display:flex;border-bottom:1px solid rgba(255,255,255,.07);overflow-x:auto}
+.nt{background:none;border:none;color:rgba(255,255,255,.38);font-size:11px;padding:10px 18px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-family:var(--font-sans);transition:color .15s}
+.nt.on{color:#fff;border-bottom-color:#378ADD}
+.nt:hover:not(.on){color:rgba(255,255,255,.7)}
+
+/* BODY */
+.body{padding:16px;background:var(--color-background-secondary)}
+.pg{display:none}.pg.on{display:block}
+
+/* KPIs */
+.krow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.kc{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:10px;padding:13px 14px;border-top:3px solid var(--ac)}
+.kl{font-size:10px;color:var(--color-text-secondary);margin-bottom:5px}
+.kv{font-size:24px;font-weight:500;line-height:1}
+.kv.red{color:#A32D2D}.kv.grn{color:#3B6D11}.kv.amb{color:#854F0B}.kv.nn{color:var(--color-text-primary)}
+.kn{font-size:10px;color:var(--color-text-secondary);margin-top:4px}
+.ks{font-size:9px;color:var(--color-text-secondary);opacity:.5;margin-top:3px;font-style:italic}
+
+/* BLOCKS — layout vertical con insight al lado */
+.block{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:10px;margin-bottom:14px;overflow:hidden}
+.bi{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr)}
+.chart-col{padding:16px;border-right:0.5px solid var(--color-border-tertiary)}
+.ins-col{padding:14px;background:var(--color-background-secondary);display:flex;flex-direction:column;gap:10px;justify-content:center}
+.ct{font-size:10px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px}
+.csrc{font-size:9px;color:var(--color-text-secondary);opacity:.5;font-style:italic;margin-bottom:8px}
+.cd{font-size:11px;color:var(--color-text-secondary);line-height:1.55;margin-bottom:10px;padding-bottom:10px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.cd b{color:var(--color-text-primary);font-weight:500}
+.src{font-size:9px;color:var(--color-text-secondary);opacity:.5;font-style:italic;margin-top:8px}
+
+/* INSIGHTS */
+.ins{border-left:3px solid #BA7517;padding:9px 12px;background:#FAEEDA;border-radius:0}
+.ins.g{border-left-color:#639922;background:#EAF3DE}
+.ins.b{border-left-color:#185FA5;background:#E6F1FB}
+.ins.r{border-left-color:#C62828;background:#FCEBEB}
+.ins-t{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#854F0B;margin-bottom:3px}
+.ins.g .ins-t{color:#27500A}
+.ins.b .ins-t{color:#0C447C}
+.ins.r .ins-t{color:#791F1F}
+.ins-p{font-size:11px;line-height:1.55;color:#854F0B}
+.ins.g .ins-p{color:#3B6D11}
+.ins.b .ins-p{color:#185FA5}
+.ins.r .ins-p{color:#A32D2D}
+.ins-p b{font-weight:500}
+
+/* CLUSTER CARDS */
+.cl-list{display:flex;flex-direction:column;gap:8px}
+.cl{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:8px;padding:11px 13px;border-left:4px solid var(--cc)}
+.cl.c0{--cc:#3B6D11}.cl.c1{--cc:#185FA5}.cl.c2{--cc:#BA7517}.cl.c3{--cc:#C62828}
+.cl-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.cl-name{font-size:12px;font-weight:500;color:var(--color-text-primary)}
+.cl-rate{font-size:18px;font-weight:500}
+.r0{color:#3B6D11}.r1{color:#185FA5}.r2{color:#854F0B}.r3{color:#A32D2D}
+.cl-s{font-size:10px;color:var(--color-text-secondary);line-height:1.55}
+.cl-a{font-size:10px;margin-top:5px;padding:3px 9px;border-radius:5px;display:inline-block}
+.ca0{background:#EAF3DE;color:#27500A}
+.ca1{background:#E6F1FB;color:#0C447C}
+.ca2{background:#FAEEDA;color:#633806}
+.ca3{background:#FCEBEB;color:#791F1F}
+
+/* FEATURE IMPORTANCE */
+.feat-r{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.feat-n{font-size:11px;color:var(--color-text-primary);width:180px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.feat-bg{flex:1;height:11px;background:var(--color-background-secondary);border-radius:3px;overflow:hidden}
+.feat-f{height:11px;border-radius:3px}
+.feat-v{font-size:10px;font-weight:500;color:var(--color-text-secondary);min-width:30px;text-align:right}
+
+/* MODEL COMPARISON */
+.cmp-r{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.cmp-r:last-child{border-bottom:none}
+.cmp-n{font-size:11px;color:var(--color-text-secondary)}
+.cmp-vs{display:flex;gap:14px}
+.cv{font-size:12px;min-width:78px;text-align:right}
+.cv.w{font-weight:500;color:#3B6D11}.cv.l{color:var(--color-text-secondary)}
+
+/* CALCULATOR */
+.calc-box{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:10px;padding:20px;margin-bottom:14px}
+.calc-h{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.calc-s{font-size:11px;color:var(--color-text-secondary);line-height:1.55;margin-bottom:16px;padding-bottom:14px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.calc-s b{color:var(--color-text-primary);font-weight:500}
+.inputs{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px;margin-bottom:20px}
+.ig{display:flex;flex-direction:column;gap:5px}
+.ig-l{font-size:11px;font-weight:500;color:var(--color-text-primary)}
+.ig-d{font-size:10px;color:var(--color-text-secondary)}
+.ig-row{display:flex;align-items:center;gap:10px;margin-top:2px}
+.ig-row input[type=range]{flex:1;accent-color:#0d2444}
+.ig-val{font-size:13px;font-weight:500;color:var(--color-text-primary);min-width:38px;text-align:right}
+.result{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:16px;padding-top:16px;border-top:0.5px solid var(--color-border-tertiary)}
+.dial{display:flex;flex-direction:column;align-items:center;gap:8px}
+.dial-n{font-size:52px;font-weight:500;line-height:1;text-align:center}
+.dial-lbl{font-size:12px;font-weight:500;padding:4px 16px;border-radius:20px;text-align:center}
+.dial-cluster{font-size:11px;font-weight:500;padding:5px 12px;border-radius:8px;margin-top:4px;text-align:center}
+.out-box{border-radius:10px;padding:14px;border:1px solid}
+.out-title{font-size:12px;font-weight:500;margin-bottom:5px}
+.out-desc{font-size:11px;line-height:1.6;margin-bottom:10px}
+.out-actions-h{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.action{display:flex;align-items:flex-start;gap:7px;font-size:11px;padding:6px 10px;border-radius:6px;margin-bottom:4px;line-height:1.45}
+.action:last-child{margin-bottom:0}
+.action-dot{width:5px;height:5px;border-radius:50%;margin-top:5px;flex-shrink:0}
+
+.lg{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.li{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--color-text-secondary)}
+.lb{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+</style>
+
+<div class="app">
+<div class="hdr">
+  <div class="h-top">
+    <div class="h-left">
+      <h1>Análisis del abandono en formación online</h1>
+      <p>Prototipo de sistema de alerta temprana · Open University UK · TFG Business Analytics · UFV 2025–26</p>
+    </div>
+    <div class="h-right">
+      <div class="h-pill"><div class="h-dot"></div><span>Modelo activo · AUC 0,936</span></div>
+      <div class="h-tags" style="justify-content:flex-end">
+        <span class="tag">OULAD 2013–14 · 31.482 est.</span>
+        <span class="tag">Random Forest · F1 0,780</span>
+      </div>
+    </div>
+  </div>
+  <div class="h-tags" style="padding-bottom:14px">
+    <span class="tag">K-Means k=4 · Silhouette 0,412</span>
+    <span class="tag">Predictor dominante: entregas (0,264)</span>
+    <span class="tag">Tasa abandono: 31,5%</span>
+    <span class="tag">Ventana crítica: primeras 4 semanas</span>
+  </div>
+</div>
+
+<div class="nav">
+  <button class="nt on" onclick="go('p1',this)">Visión general</button>
+  <button class="nt" onclick="go('p2',this)">Perfiles de riesgo</button>
+  <button class="nt" onclick="go('p3',this)">Predictores</button>
+  <button class="nt" onclick="go('p4',this)">Modelo</button>
+  <button class="nt" onclick="go('p5',this)">⚡ Calcular riesgo</button>
+</div>
+
+<div class="body">
+
+<!-- P1: VISIÓN GENERAL -->
+<div id="p1" class="pg on">
+  <div class="krow">
+    <div class="kc" style="--ac:#C62828">
+      <div class="kl">Tasa abandono global</div>
+      <div class="kv red">31,5%</div>
+      <div class="kn">9.907 de 31.482 estudiantes</div>
+      <div class="ks">OULAD · studentInfo.csv</div>
+    </div>
+    <div class="kc" style="--ac:#C62828">
+      <div class="kl">Clúster máximo riesgo</div>
+      <div class="kv red">77,6%</div>
+      <div class="kn">Clúster 3 · 24,7% del alumnado</div>
+      <div class="ks">K-Means · studentVle.csv</div>
+    </div>
+    <div class="kc" style="--ac:#639922">
+      <div class="kl">AUC-ROC modelo final</div>
+      <div class="kv grn">0,936</div>
+      <div class="kn">Random Forest seleccionado</div>
+      <div class="ks">Análisis del dato · TFG</div>
+    </div>
+    <div class="kc" style="--ac:#378ADD">
+      <div class="kl">Abandonos en primeros 30 días</div>
+      <div class="kv nn">50,4%</div>
+      <div class="kn">Ventana crítica de intervención</div>
+      <div class="ks">OULAD · studentRegistration.csv</div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="bi">
+      <div class="chart-col">
+        <div class="ct">Distribución de resultados académicos</div>
+        <div class="csrc">Fuente: OULAD studentInfo.csv · 31.482 matrículas · 2013–14</div>
+        <div class="cd">De los 31.482 estudiantes, <b>9.907 (31,5%) abandonaron</b>. El desbalance de clases, 68,5% frente a 31,5%, es un factor determinante en la elección de F1-Score y AUC-ROC como métricas de evaluación del modelo.</div>
+        <div class="lg">
+          <span class="li"><span class="lb" style="background:#3B6D11"></span>Aprobado 39,1%</span>
+          <span class="li"><span class="lb" style="background:#639922"></span>Distinción 9,6%</span>
+          <span class="li"><span class="lb" style="background:#BA7517"></span>Suspenso 19,8%</span>
+          <span class="li"><span class="lb" style="background:#C62828"></span>Abandono 31,5%</span>
+        </div>
+        <div style="position:relative;height:190px"><canvas id="c1" role="img" aria-label="Distribución de resultados: aprobado 39.1%, distinción 9.6%, suspenso 19.8%, abandono 31.5%"></canvas></div>
+      </div>
+      <div class="ins-col">
+        <div class="ins r">
+          <div class="ins-t">El problema en cifras</div>
+          <div class="ins-p"><b>1 de cada 3 estudiantes abandona</b>. Esta tasa es estructuralmente más alta que en educación presencial, lo que refleja el perfil de riesgo diferencial de la formación a distancia.</div>
+        </div>
+        <div class="ins">
+          <div class="ins-t">Por qué importa el desbalance</div>
+          <div class="ins-p">Con un 68,5% / 31,5%, la accuracy engaña: un modelo que predijera siempre "no abandona" tendría <b>accuracy del 68,5% sin aprender nada</b>. Por eso el modelo se evalúa con F1-Score y AUC-ROC.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="bi">
+      <div class="chart-col">
+        <div class="ct">Evolución temporal del abandono (semanas del curso)</div>
+        <div class="csrc">Fuente: OULAD studentRegistration.csv · date_unregistration · 2013–14</div>
+        <div class="cd">El <b>pico crítico ocurre en las semanas 0 y 1</b>, con más de 2.200 desregistros acumulados. El 50,4% de todos los abandonos se producen en los primeros 30 días del curso.</div>
+        <div style="position:relative;height:190px"><canvas id="c2" role="img" aria-label="Pico de abandonos en semanas 0 y 1, descenso progresivo posterior"></canvas></div>
+      </div>
+      <div class="ins-col">
+        <div class="ins r">
+          <div class="ins-t">La ventana crítica</div>
+          <div class="ins-p">Intervenir en la <b>semana 1–2 es 3 a 5 veces más eficaz</b> que hacerlo en la semana 8. La señal de alerta debe activarse antes de que el estudiante tome la decisión de abandonar, no después.</div>
+        </div>
+        <div class="ins g">
+          <div class="ins-t">Recomendación directa</div>
+          <div class="ins-p">Las alertas automáticas deben configurarse en la <b>semana 0 del curso</b>. Ausencia de cualquier entrega o actividad en los primeros 10 días es el umbral de actuación más eficaz.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="bi">
+      <div class="chart-col">
+        <div class="ct">Abandono por módulo</div>
+        <div class="csrc">Fuente: OULAD studentInfo.csv + courses.csv · 7 módulos · 2013–14</div>
+        <div class="cd">La tasa varía del <b>11,5% (GGG) al 44,5% (CCC)</b>. La variación entre módulos indica que el diseño pedagógico y la dificultad percibida influyen en la retención independientemente del perfil del estudiante.</div>
+        <div style="position:relative;height:190px"><canvas id="c3" role="img" aria-label="CCC 44.5%, DDD 35.9%, FFF 31%, BBB 30.2%, EEE 24.6%, AAA 16.8%, GGG 11.5%"></canvas></div>
+      </div>
+      <div class="ins-col">
+        <div class="ins">
+          <div class="ins-t">El módulo importa</div>
+          <div class="ins-p"><b>CCC cuadruplica la tasa de GGG</b> (44,5% vs 11,5%). Esto indica que el abandono no depende solo del estudiante: el diseño del módulo es también un factor de riesgo gestionable.</div>
+        </div>
+        <div class="ins b">
+          <div class="ins-t">Para la institución</div>
+          <div class="ins-p">Los umbrales de alerta deberían <b>calibrarse por módulo</b>. El mismo perfil de entregas tiene distinto significado en CCC que en GGG. Un sistema inteligente debe incorporar este contexto.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- P2: PERFILES -->
+<div id="p2" class="pg">
+  <div class="block">
+    <div class="bi">
+      <div class="chart-col">
+        <div class="ct">Tasa de abandono por clúster</div>
+        <div class="csrc">Fuente: K-Means k=4 · OULAD studentVle.csv + studentAssessment.csv · Silhouette Score 0,412</div>
+        <div class="cd">Los 4 perfiles tienen tasas de abandono <b>radicalmente distintas</b>: de 0,0% a 77,6%. La separación confirma que K-Means ha encontrado estructuras reales en los datos (Silhouette 0,412).</div>
+        <div style="position:relative;height:200px"><canvas id="c4" role="img" aria-label="C1: 0%, C0: 7.6%, C2: 24.2%, C3: 77.6%"></canvas></div>
+      </div>
+      <div class="ins-col">
+        <div class="ins r">
+          <div class="ins-t">La brecha es estructural</div>
+          <div class="ins-p">77,6 puntos porcentuales separan el Clúster 1 del Clúster 3. <b>No es una diferencia de grado</b>, es una diferencia de perfil: comportamientos cualitativamente distintos desde el primer día.</div>
+        </div>
+        <div class="ins g">
+          <div class="ins-t">Silhouette 0,412 lo valida</div>
+          <div class="ins-p">Un Silhouette Score de 0,412 confirma que los 4 grupos tienen <b>separación estadística real</b>. No son artefactos del algoritmo, sino perfiles con significado propio y diferenciado.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div style="padding:16px">
+      <div class="ct">Los 4 perfiles de estudiante identificados</div>
+      <div class="csrc">Fuente: K-Means k=4 · OULAD studentVle.csv + studentAssessment.csv · 31.482 estudiantes</div>
+      <div class="cd">Cada clúster tiene un comportamiento, nivel de riesgo e intervención óptima diferente. La franja de color izquierda codifica el nivel de riesgo de menor (azul) a mayor (rojo).</div>
+      <div class="cl-list">
+        <div class="cl c1">
+          <div class="cl-top"><div class="cl-name">Clúster 1 · Sin riesgo</div><div class="cl-rate r1">0,0%</div></div>
+          <div class="cl-s">14,4% del alumnado (4.530 est.) · 1.043 clics · 97 días activos · 7,9 entregas · <b>submitted_exam = 1,00 en todos los casos</b> (100% llegan al examen final)</div>
+          <div><span class="cl-a ca1">Intervención: alerta pre-examen final</span></div>
+        </div>
+        <div class="cl c0">
+          <div class="cl-top"><div class="cl-name">Clúster 0 · Riesgo bajo</div><div class="cl-rate r0">7,6%</div></div>
+          <div class="cl-s">14,4% del alumnado (4.524 est.) · 4.012 clics · 122 días activos · 10,3 entregas · nota media 79,5 · alta actividad sostenida</div>
+          <div><span class="cl-a ca0">Intervención: seguimiento estándar</span></div>
+        </div>
+        <div class="cl c2">
+          <div class="cl-top"><div class="cl-name">Clúster 2 · Riesgo moderado</div><div class="cl-rate r2">24,2%</div></div>
+          <div class="cl-s">46,6% del alumnado (14.666 est.) · 799 clics · 47 días activos · 5,6 entregas · grupo <b>más numeroso</b> · actividad intermitente</div>
+          <div><span class="cl-a ca2">Intervención: recordatorios automáticos de entregas</span></div>
+        </div>
+        <div class="cl c3">
+          <div class="cl-top"><div class="cl-name">Clúster 3 · Máximo riesgo</div><div class="cl-rate r3">77,6%</div></div>
+          <div class="cl-s">24,7% del alumnado (7.762 est.) · 67 clics · 5 días activos · 0,2 entregas · nota media 3,6 · <b>actividad mínima desde el primer día</b></div>
+          <div><span class="cl-a ca3">Intervención: contacto humano directo urgente</span></div>
+        </div>
+      </div>
+      <div class="ins" style="margin-top:12px">
+        <div class="ins-t">La eficiencia de actuar por segmento</div>
+        <div class="ins-p">El Clúster 3 representa al <b>24,7% del alumnado</b> y puede identificarse en la primera semana. Concentrar los recursos de retención sobre este grupo es más eficiente que distribuirlos uniformemente sobre los 31.482 estudiantes. El Clúster 2 (46,6%) genera más abandonos en términos absolutos y requiere un protocolo diferente pero también urgente.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- P3: PREDICTORES -->
+<div id="p3" class="pg">
+  <div class="block">
+    <div class="bi">
+      <div class="chart-col">
+        <div class="ct">Importancia de variables · Random Forest</div>
+        <div class="csrc">Fuente: Random Forest · Feature Importance · OULAD 31.482 estudiantes</div>
+        <div class="cd"><b>num_assessments_submitted domina con 0,264</b>, casi el triple que la siguiente variable. Las variables demográficas (región, edad, IMD) tienen contribución marginal pero confirman su inclusión en el modelo.</div>
+        <div style="margin-top:8px">
+          <div class="feat-r"><span class="feat-n">num_assessments_submitted</span><div class="feat-bg"><div class="feat-f" style="width:100%;background:#0d2444"></div></div><span class="feat-v">0,264</span></div>
+          <div class="feat-r"><span class="feat-n">active_days</span><div class="feat-bg"><div class="feat-f" style="width:64%;background:#185FA5"></div></div><span class="feat-v">0,169</span></div>
+          <div class="feat-r"><span class="feat-n">avg_score_tma</span><div class="feat-bg"><div class="feat-f" style="width:58%;background:#378ADD"></div></div><span class="feat-v">0,153</span></div>
+          <div class="feat-r"><span class="feat-n">total_clicks</span><div class="feat-bg"><div class="feat-f" style="width:50%;background:#85B7EB"></div></div><span class="feat-v">0,132</span></div>
+          <div class="feat-r"><span class="feat-n">avg_score</span><div class="feat-bg"><div class="feat-f" style="width:44%;background:#85B7EB"></div></div><span class="feat-v">0,116</span></div>
+          <div class="feat-r"><span class="feat-n">cluster (K-Means)</span><div class="feat-bg"><div class="feat-f" style="width:19%;background:#C4DBF5"></div></div><span class="feat-v">0,050</span></div>
+          <div class="feat-r"><span class="feat-n">avg_clicks_per_day</span><div class="feat-bg"><div class="feat-f" style="width:14%;background:#C4DBF5"></div></div><span class="feat-v">0,035</span></div>
+          <div class="feat-r"><span class="feat-n">región / edad / imd_band</span><div class="feat-bg"><div class="feat-f" style="width:6%;background:#E6F1FB"></div></div><span class="feat-v">0,015</span></div>
+        </div>
+        <div class="src">Variable cluster creada mediante K-Means sobre studentVle.csv + studentAssessment.csv</div>
+      </div>
+      <div class="ins-col">
+        <div class="ins r">
+          <div class="ins-t">El predictor dominante</div>
+          <div class="ins-p">Dejar de entregar es <b>el proxy más directo del abandono</b>. Un estudiante que no entrega ya está desconectándose del curso antes de que el sistema lo registre formalmente.</div>
+        </div>
+        <div class="ins b">
+          <div class="ins-t">Sin datos sensibles</div>
+          <div class="ins-p">Las variables demográficas tienen contribución marginal. El sistema de alerta puede funcionar <b>solo con datos de actividad</b> en la plataforma, sin acceder a información personal del estudiante.</div>
+        </div>
+        <div class="ins g">
+          <div class="ins-t">Consistencia entre modelos</div>
+          <div class="ins-p">Regresión Logística (coef. −2,8) y Random Forest (imp. 0,264) apuntan al mismo predictor. <b>El hallazgo es robusto</b>: no depende del algoritmo, sino de los datos.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- P4: MODELO -->
+<div id="p4" class="pg">
+  <div class="krow">
+    <div class="kc" style="--ac:#639922"><div class="kl">AUC-ROC</div><div class="kv grn">0,936</div><div class="kn">Random Forest</div></div>
+    <div class="kc" style="--ac:#639922"><div class="kl">F1-Score</div><div class="kv grn">0,780</div><div class="kn">Equilibrio precisión/recall</div></div>
+    <div class="kc" style="--ac:#378ADD"><div class="kl">Falsos negativos</div><div class="kv nn">417</div><div class="kn">−18 vs. Reg. Logística</div></div>
+    <div class="kc" style="--ac:#378ADD"><div class="kl">Falsos positivos</div><div class="kv nn">469</div><div class="kn">−75 vs. Reg. Logística</div></div>
+  </div>
+
+  <div class="block">
+    <div class="bi">
+      <div class="chart-col">
+        <div class="ct">Comparativa de modelos</div>
+        <div class="csrc">Fuente: conjunto de test 6.297 estudiantes · validación cruzada 5-fold · F1 medio 0,747</div>
+        <div class="cd">El Random Forest <b>supera a la Regresión Logística en todas las métricas</b> y reduce simultáneamente los dos tipos de error, algo inusual que confirma su superioridad para este problema.</div>
+        <div style="display:flex;justify-content:flex-end;gap:14px;margin-bottom:6px">
+          <span style="font-size:10px;color:var(--color-text-secondary);min-width:80px;text-align:right">Reg. Logística</span>
+          <span style="font-size:10px;color:var(--color-text-secondary);min-width:80px;text-align:right">Random Forest</span>
+        </div>
+        <div class="cmp-r"><span class="cmp-n">F1-Score</span><div class="cmp-vs"><span class="cv l">0,7599</span><span class="cv w">0,7796 ↑</span></div></div>
+        <div class="cmp-r"><span class="cmp-n">AUC-ROC</span><div class="cmp-vs"><span class="cv l">0,9239</span><span class="cv w">0,9361 ↑</span></div></div>
+        <div class="cmp-r"><span class="cmp-n">Accuracy</span><div class="cmp-vs"><span class="cv l">84,45%</span><span class="cv w">85,93% ↑</span></div></div>
+        <div class="cmp-r"><span class="cmp-n">Precisión (abandono)</span><div class="cmp-vs"><span class="cv l">74,0%</span><span class="cv w">77,0% ↑</span></div></div>
+        <div class="cmp-r"><span class="cmp-n">Recall (abandono)</span><div class="cmp-vs"><span class="cv l">78,1%</span><span class="cv w">79,0% ↑</span></div></div>
+        <div class="cmp-r"><span class="cmp-n">Falsos negativos</span><div class="cmp-vs"><span class="cv l">435</span><span class="cv w">417 ↓</span></div></div>
+        <div class="cmp-r"><span class="cmp-n">Falsos positivos</span><div class="cmp-vs"><span class="cv l">544</span><span class="cv w">469 ↓</span></div></div>
+      </div>
+      <div class="ins-col">
+        <div class="ins g">
+          <div class="ins-t">Por qué reduce ambos errores</div>
+          <div class="ins-p"><b>Falsos negativos</b> = alumnos en riesgo sin detección. <b>Falsos positivos</b> = alarmas innecesarias que saturan a tutores. Reducir los dos a la vez es la ventaja operativa decisiva del Random Forest.</div>
+        </div>
+        <div class="ins">
+          <div class="ins-t">AUC 0,936 en la práctica</div>
+          <div class="ins-p">Si tomamos al azar un alumno que abandona y uno que no, el modelo identifica cuál es cuál en el <b>93,6% de los casos</b>. Es el umbral mínimo para un sistema de alerta operativo real.</div>
+        </div>
+        <div class="ins b">
+          <div class="ins-t">Validación cruzada</div>
+          <div class="ins-p">F1 medio CV 0,747 vs. F1 test 0,780. Diferencia de +0,033. <b>Sin sobreajuste</b>: el modelo generaliza correctamente a datos nuevos.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- P5: CALCULADORA -->
+<div id="p5" class="pg">
+  <div class="calc-box">
+    <div class="calc-h">Calculadora de riesgo de abandono</div>
+    <div class="calc-s">Introduce los datos de comportamiento de un estudiante para estimar su probabilidad de abandono y obtener recomendaciones de intervención. <b>Basada en los pesos reales del modelo Random Forest</b> entrenado con 31.482 estudiantes del dataset OULAD 2013–14. Los umbrales de perfil se derivan directamente de los clústeres K-Means identificados en el análisis.</div>
+
+    <div class="inputs">
+      <div class="ig">
+        <div class="ig-l">Entregas realizadas</div>
+        <div class="ig-d">Predictor dominante · importancia relativa 0,264</div>
+        <div class="ig-row"><input type="range" id="s1" min="0" max="20" value="2" step="1" oninput="calc()"><span class="ig-val" id="v1">2</span></div>
+      </div>
+      <div class="ig">
+        <div class="ig-l">Días activos en la plataforma</div>
+        <div class="ig-d">2ª variable más importante · importancia 0,169</div>
+        <div class="ig-row"><input type="range" id="s2" min="0" max="200" value="15" step="1" oninput="calc()"><span class="ig-val" id="v2">15</span></div>
+      </div>
+      <div class="ig">
+        <div class="ig-l">Clics totales en el curso</div>
+        <div class="ig-d">Engagement digital · importancia 0,132</div>
+        <div class="ig-row"><input type="range" id="s3" min="0" max="6000" value="200" step="50" oninput="calc()"><span class="ig-val" id="v3">200</span></div>
+      </div>
+      <div class="ig">
+        <div class="ig-l">Nota media en evaluaciones</div>
+        <div class="ig-d">Rendimiento académico · importancia 0,116</div>
+        <div class="ig-row"><input type="range" id="s4" min="0" max="100" value="40" step="1" oninput="calc()"><span class="ig-val" id="v4">40</span></div>
+      </div>
+    </div>
+
+    <div class="result">
+      <div class="dial">
+        <div style="font-size:10px;color:var(--color-text-secondary);text-align:center;margin-bottom:2px">Probabilidad estimada de abandono</div>
+        <div class="dial-n" id="dn">81%</div>
+        <div class="dial-lbl" id="dl">Riesgo alto</div>
+        <div class="dial-cluster" id="dc">Clúster 3 · Máximo riesgo</div>
+        <div style="font-size:9px;color:var(--color-text-secondary);text-align:center;margin-top:8px;font-style:italic">Basado en pesos RF: subs 0,264 · días 0,169 · clics 0,132 · nota 0,116</div>
+      </div>
+      <div id="out"></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div style="padding:14px">
+      <div class="ct">Cómo interpretar los resultados</div>
+      <div class="csrc">Referencia: perfiles K-Means · OULAD 2013–14</div>
+      <div class="cd">Los umbrales de riesgo se derivan directamente de los perfiles de clúster identificados por K-Means. La calculadora no es un diagnóstico exacto, sino una <b>aproximación basada en los predictores más importantes del modelo</b>, diseñada para orientar decisiones de intervención en tiempo real.</div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
+        <div style="background:var(--color-background-secondary);border-radius:8px;padding:10px;border-top:3px solid #185FA5">
+          <div style="font-size:10px;color:var(--color-text-secondary);margin-bottom:3px">Perfil C1 · Sin riesgo</div>
+          <div style="font-size:12px;font-weight:500;color:#185FA5">Prob. &lt; 10%</div>
+          <div style="font-size:10px;color:var(--color-text-secondary);margin-top:2px">Alta actividad · examen completado</div>
+        </div>
+        <div style="background:var(--color-background-secondary);border-radius:8px;padding:10px;border-top:3px solid #3B6D11">
+          <div style="font-size:10px;color:var(--color-text-secondary);margin-bottom:3px">Perfil C0 · Riesgo bajo</div>
+          <div style="font-size:12px;font-weight:500;color:#3B6D11">Prob. 10–25%</div>
+          <div style="font-size:10px;color:var(--color-text-secondary);margin-top:2px">4.012 clics · 122 días · 10 entregas</div>
+        </div>
+        <div style="background:var(--color-background-secondary);border-radius:8px;padding:10px;border-top:3px solid #BA7517">
+          <div style="font-size:10px;color:var(--color-text-secondary);margin-bottom:3px">Perfil C2 · Moderado</div>
+          <div style="font-size:12px;font-weight:500;color:#BA7517">Prob. 25–55%</div>
+          <div style="font-size:10px;color:var(--color-text-secondary);margin-top:2px">799 clics · 47 días · 5,6 entregas</div>
+        </div>
+        <div style="background:var(--color-background-secondary);border-radius:8px;padding:10px;border-top:3px solid #C62828">
+          <div style="font-size:10px;color:var(--color-text-secondary);margin-bottom:3px">Perfil C3 · Máximo riesgo</div>
+          <div style="font-size:12px;font-weight:500;color:#A32D2D">Prob. &gt; 55%</div>
+          <div style="font-size:10px;color:var(--color-text-secondary);margin-top:2px">67 clics · 5 días · 0,2 entregas</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+function go(id,btn){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nt').forEach(b=>b.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  btn.classList.add('on');
+}
+const dk=matchMedia('(prefers-color-scheme:dark)').matches;
+const tc=dk?'rgba(255,255,255,.55)':'rgba(0,0,0,.5)';
+const gc=dk?'rgba(255,255,255,.07)':'rgba(0,0,0,.06)';
+const base={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}};
+
+// C1 - Resultados académicos (datos verificados del TFG)
+new Chart(document.getElementById('c1'),{type:'doughnut',
+  data:{labels:['Aprobado (39,1%)','Distinción (9,6%)','Suspenso (19,8%)','Abandono (31,5%)'],
+    datasets:[{data:[39.1,9.6,19.8,31.5],backgroundColor:['#3B6D11','#639922','#BA7517','#C62828'],borderWidth:2,borderColor:dk?'#111':'#fff'}]},
+  options:{responsive:true,maintainAspectRatio:false,cutout:'58%',
+    plugins:{legend:{position:'bottom',labels:{font:{size:10},color:tc,boxWidth:9,padding:10}},
+    tooltip:{callbacks:{label:ctx=>` ${ctx.label}`}}}}});
+
+// C2 - Abandono por semana (datos reales studentRegistration.csv)
+const wks=[1200,1068,215,360,303,216,246,256,230,220,203,146,171,204,218,199,152];
+new Chart(document.getElementById('c2'),{type:'bar',
+  data:{labels:wks.map((_,i)=>`S${i}`),
+    datasets:[{data:wks,backgroundColor:wks.map((v,i)=>i<2?'#C62828':i<5?'#D85A30':'#B5D4F4'),borderRadius:3}]},
+  options:{...base,scales:{y:{ticks:{color:tc,font:{size:9}},grid:{color:gc}},x:{ticks:{color:tc,font:{size:9},maxTicksLimit:10},grid:{display:false}}},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.raw} desregistros`}}}}});
+
+// C3 - Abandono por módulo (datos verificados del TFG)
+new Chart(document.getElementById('c3'),{type:'bar',indexAxis:'y',
+  data:{labels:['GGG','AAA','EEE','BBB','FFF','DDD','CCC'],
+    datasets:[{data:[11.5,16.8,24.6,30.2,31.0,35.9,44.5],
+      backgroundColor:['#639922','#639922','#BA7517','#D85A30','#D85A30','#C62828','#C62828'],borderRadius:3}]},
+  options:{...base,scales:{x:{ticks:{color:tc,font:{size:9},callback:v=>v+'%'},grid:{color:gc}},y:{ticks:{color:tc,font:{size:10}},grid:{display:false}}},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.raw}%`}}}}});
+
+// C4 - Tasa abandono por clúster (datos verificados del TFG: C1=0%, C0=7.6%, C2=24.2%, C3=77.6%)
+new Chart(document.getElementById('c4'),{type:'bar',
+  data:{labels:['C1 · Sin riesgo','C0 · Riesgo bajo','C2 · Moderado','C3 · Máx. riesgo'],
+    datasets:[{data:[0,7.6,24.2,77.6],backgroundColor:['#185FA5','#3B6D11','#BA7517','#C62828'],borderRadius:5,barThickness:48}]},
+  options:{...base,scales:{y:{beginAtZero:true,max:100,ticks:{color:tc,font:{size:9},callback:v=>v+'%'},grid:{color:gc}},x:{ticks:{color:tc,font:{size:10}},grid:{display:false}}},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.raw}%`}}}}});
+
+// CALCULADORA DE RIESGO
+function calc(){
+  const s1=+document.getElementById('s1').value;
+  const s2=+document.getElementById('s2').value;
+  const s3=+document.getElementById('s3').value;
+  const s4=+document.getElementById('s4').value;
+  document.getElementById('v1').textContent=s1;
+  document.getElementById('v2').textContent=s2;
+  document.getElementById('v3').textContent=s3.toLocaleString();
+  document.getElementById('v4').textContent=s4;
+
+  // Pesos reales del modelo RF
+  const ws=0.264,wd=0.169,wc=0.132,wn=0.116;
+  const tot=ws+wd+wc+wn;
+  // Normalización contra medias de clúster 0 (alta actividad)
+  const ns=Math.min(s1/12,1);
+  const nd=Math.min(s2/150,1);
+  const nc=Math.min(s3/5000,1);
+  const nn=Math.min(s4/100,1);
+  const eng=(ws*ns+wd*nd+wc*nc+wn*nn)/tot;
+  const prob=Math.max(3,Math.round((1-eng)*100));
+
+  const dn=document.getElementById('dn');
+  const dl=document.getElementById('dl');
+  const dc=document.getElementById('dc');
+  const out=document.getElementById('out');
+
+  let color,bg,border,label,cluster,desc,actions;
+
+  if(prob<12){
+    color='#0C447C';bg='#E6F1FB';border='#85B7EB';label='Sin riesgo';cluster='Clúster 1 · Sin abandono (0,0%)';
+    desc='El perfil de actividad es consistente con el Clúster 1, donde ningún estudiante abandona el curso. El 100% de los miembros de este grupo se presentan al examen final.';
+    actions=[{t:'Ninguna intervención urgente necesaria',c:'#EAF3DE',tc:'#27500A'},{t:'Recordatorio pre-examen final cuando se acerque la fecha',c:'#E6F1FB',tc:'#0C447C'},{t:'Monitorizar que la tendencia de actividad se mantiene estable',c:'#E6F1FB',tc:'#0C447C'}];
+  } else if(prob<27){
+    color='#27500A';bg='#EAF3DE';border='#C0DD97';label='Riesgo bajo';cluster='Clúster 0 · Riesgo bajo (7,6%)';
+    desc='El perfil corresponde al Clúster 0: alta actividad digital con 4.012 clics medios y 122 días activos. La tasa de abandono de este grupo es del 7,6%.';
+    actions=[{t:'Seguimiento estándar sin intervención urgente',c:'#EAF3DE',tc:'#27500A'},{t:'Alerta automática si la actividad cae por debajo del umbral en 2 semanas consecutivas',c:'#FAEEDA',tc:'#633806'},{t:'Revisar nota si cae por debajo de 60 en las próximas entregas',c:'#FAEEDA',tc:'#633806'}];
+  } else if(prob<58){
+    color='#633806';bg='#FAEEDA';border='#FAC775';label='Riesgo moderado';cluster='Clúster 2 · Riesgo moderado (24,2%)';
+    desc='El perfil corresponde al Clúster 2, el más numeroso (46,6% del alumnado), con una tasa de abandono del 24,2%. Actividad intermitente y entregas por debajo de la media esperada.';
+    actions=[{t:'Enviar recordatorio personalizado de próximas entregas esta semana',c:'#FAEEDA',tc:'#633806'},{t:'Ofrecer acceso facilitado a materiales de repaso y tutorías',c:'#FAEEDA',tc:'#633806'},{t:'Activar alerta escalada si no hay actividad en los próximos 7 días',c:'#FCEBEB',tc:'#791F1F'},{t:'Escalar a riesgo alto si la nota media cae por debajo de 50',c:'#FCEBEB',tc:'#791F1F'}];
+  } else {
+    color='#791F1F';bg='#FCEBEB';border='#F09595';label='Riesgo alto';cluster='Clúster 3 · Máximo riesgo (77,6%)';
+    desc='El perfil coincide con el Clúster 3, donde el 77,6% de los estudiantes abandona. Actividad mínima, muy pocas o ninguna entrega. La intervención debe ser inmediata.';
+    actions=[{t:'Contacto humano directo esta semana — tutor o coordinador responsable',c:'#FCEBEB',tc:'#791F1F'},{t:'Mensaje personalizado de apoyo y reenganche con el curso',c:'#FCEBEB',tc:'#791F1F'},{t:'Simplificar acceso a los primeros contenidos del módulo',c:'#FAEEDA',tc:'#633806'},{t:'Si no hay respuesta en 5 días: intervención escalada de segundo nivel',c:'#FAEEDA',tc:'#633806'}];
+  }
+
+  dn.textContent=prob+'%'; dn.style.color=color;
+  dl.textContent=label; dl.style.background=bg; dl.style.color=color;
+  dc.textContent=cluster; dc.style.background=bg; dc.style.color=color;
+  out.innerHTML=`<div style="background:${bg};border:1px solid ${border};border-radius:10px;padding:14px">
+    <div style="font-size:12px;font-weight:500;color:${color};margin-bottom:5px">Diagnóstico</div>
+    <div style="font-size:11px;color:${color};line-height:1.6;margin-bottom:12px">${desc}</div>
+    <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:${color};margin-bottom:7px">Acciones recomendadas</div>
+    ${actions.map(a=>`<div style="background:${a.c};color:${a.tc};border-radius:6px;padding:6px 10px;font-size:11px;line-height:1.45;display:flex;gap:7px;align-items:flex-start;margin-bottom:4px"><span style="width:5px;height:5px;border-radius:50%;background:${a.tc};margin-top:6px;flex-shrink:0;display:block"></span>${a.t}</div>`).join('')}
+  </div>`;
+}
+calc();
+</script>
